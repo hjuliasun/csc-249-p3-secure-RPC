@@ -51,20 +51,38 @@ def TLS_handshake_client(connection, server_ip=SERVER_IP, server_port=SERVER_POR
     ## Instructions ##
     # Fill this function in with the TLS handshake:
     #  * Request a TLS handshake from the server
+    connection.sendall(bytes(encode_message(MSG), 'utf-8'))
+    print('Requesting TLS handshake from the server')
     #  * Receive a signed certificate from the server
+    signed_certificate = connection.recv(1024).decode('utf-8')
+    print(f'Receiving signed certificate: {signed_certificate}')
     #  * Verify the certificate with the certificate authority's public key
     #    * Use cryptography_simulator.verify_certificate()
+    verification = cryptgraphy_simulator.verify_certificate(CA_public_key, signed_certificate)
+    # print('verification:', verification)
+
     #  * Extract the server's public key, IP address, and port from the certificate
+    # ver_ip, ver_port, public_key = verification
+    ver_ip, ver_port, public_keys = verification.split(',',2)
+    public_key = eval(public_keys.strip())
+    # ver_ip = ver_info[0]
+    # ver_port = ver_info[1]
+    # public_key = ver_info[2]
     #  * Verify that you're communicating with the port and IP specified in the certificate
+    if ver_ip != server_ip or int(ver_port) != int(server_port):
+        raise Exception('Incorrect certification requirements.')
     #  * Generate a symmetric key to send to the server
     #    * Use cryptography_simulator.generate_symmetric_key()
+    symmetric_key = cryptgraphy_simulator.generate_symmetric_key()
     #  * Use the server's public key to encrypt the symmetric key
     #    * Use cryptography_simulator.public_key_encrypt()
+    encrypt_key = cryptgraphy_simulator.public_key_encrypt(public_key, symmetric_key)
     #  * Send the encrypted symmetric key to the server
+    connection.sendall(encrypt_key.encode('utf-8'))
     #  * Return the symmetric key for use in further communications with the server
     # Make sure to use encode_message() on the first message so the VPN knows which 
     # server to connect with
-    return 0
+    return symmetric_key
 
 print("Client starting - connecting to VPN at IP", VPN_IP, "and port", VPN_PORT)
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
